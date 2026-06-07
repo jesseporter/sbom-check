@@ -345,10 +345,8 @@ class TestSemanticValidator:
     """Test cases for SemanticValidator."""
 
     def test_init_with_custom_ontology_path(self) -> None:
-        """Test validator initialization with custom ontology path (ignored)."""
-        custom_path = Path("/custom/ontology.owl")
-        validator = SemanticValidator(custom_path)
-        # The optimized validator doesn't use ontology files, but accepts the parameter
+        """Test validator initialization (ontology path not used by optimized validator)."""
+        validator = SemanticValidator()
         assert validator is not None
 
     def test_init_with_default_ontology_path(self) -> None:
@@ -374,6 +372,10 @@ class TestSemanticValidator:
                 {
                     "SPDXID": "SPDXRef-Package",
                     "name": "Test Package",
+                    # filesAnalyzed omitted — defaults to true per spec
+                    "packageVerificationCode": {
+                        "packageVerificationCodeValue": "d6a770ba38583ed4bb4525bd96e50461655d2758"
+                    },
                 }
             ],
         }
@@ -420,6 +422,192 @@ class TestSemanticValidator:
         assert not result.is_valid
         assert len(result.messages) > 0
         assert any("unknown related SPDX ID" in msg.message for msg in result.messages)
+
+    def test_validate_package_verification_code_required_when_files_analyzed_true(
+        self,
+    ) -> None:
+        """Test that packageVerificationCode is required when filesAnalyzed is true."""
+        data = {
+            "SPDXID": "SPDXRef-DOCUMENT",
+            "relationships": [
+                {
+                    "spdxElementId": "SPDXRef-DOCUMENT",
+                    "relationshipType": "DESCRIBES",
+                    "relatedSpdxElement": "SPDXRef-Package",
+                }
+            ],
+            "packages": [
+                {
+                    "SPDXID": "SPDXRef-Package",
+                    "name": "Test Package",
+                    "filesAnalyzed": True,
+                    # missing packageVerificationCode
+                }
+            ],
+        }
+
+        validator = SemanticValidator()
+        result = validator.validate(data)
+
+        assert not result.semantic_valid
+        assert any("packageVerificationCode" in msg.message for msg in result.messages)
+
+    def test_validate_package_verification_code_required_when_files_analyzed_omitted(
+        self,
+    ) -> None:
+        """Test that packageVerificationCode is required when filesAnalyzed is omitted (defaults to true)."""
+        data = {
+            "SPDXID": "SPDXRef-DOCUMENT",
+            "relationships": [
+                {
+                    "spdxElementId": "SPDXRef-DOCUMENT",
+                    "relationshipType": "DESCRIBES",
+                    "relatedSpdxElement": "SPDXRef-Package",
+                }
+            ],
+            "packages": [
+                {
+                    "SPDXID": "SPDXRef-Package",
+                    "name": "Test Package",
+                    # filesAnalyzed omitted — defaults to true
+                    # missing packageVerificationCode
+                }
+            ],
+        }
+
+        validator = SemanticValidator()
+        result = validator.validate(data)
+
+        assert not result.semantic_valid
+        assert any("packageVerificationCode" in msg.message for msg in result.messages)
+
+    def test_validate_package_verification_code_not_required_when_files_analyzed_false(
+        self,
+    ) -> None:
+        """Test that packageVerificationCode is not required when filesAnalyzed is false."""
+        data = {
+            "SPDXID": "SPDXRef-DOCUMENT",
+            "relationships": [
+                {
+                    "spdxElementId": "SPDXRef-DOCUMENT",
+                    "relationshipType": "DESCRIBES",
+                    "relatedSpdxElement": "SPDXRef-Package",
+                }
+            ],
+            "packages": [
+                {
+                    "SPDXID": "SPDXRef-Package",
+                    "name": "Test Package",
+                    "filesAnalyzed": False,
+                    # no packageVerificationCode — valid when filesAnalyzed is false
+                }
+            ],
+        }
+
+        validator = SemanticValidator()
+        result = validator.validate(data)
+
+        assert result.semantic_valid
+        assert not any(
+            "packageVerificationCode" in msg.message for msg in result.messages
+        )
+
+    def test_validate_package_verification_code_present_passes(self) -> None:
+        """Test that validation passes when packageVerificationCode is present and filesAnalyzed is true."""
+        data = {
+            "SPDXID": "SPDXRef-DOCUMENT",
+            "relationships": [
+                {
+                    "spdxElementId": "SPDXRef-DOCUMENT",
+                    "relationshipType": "DESCRIBES",
+                    "relatedSpdxElement": "SPDXRef-Package",
+                }
+            ],
+            "packages": [
+                {
+                    "SPDXID": "SPDXRef-Package",
+                    "name": "Test Package",
+                    "filesAnalyzed": True,
+                    "packageVerificationCode": {
+                        "packageVerificationCodeValue": "d6a770ba38583ed4bb4525bd96e50461655d2758"
+                    },
+                }
+            ],
+        }
+
+        validator = SemanticValidator()
+        result = validator.validate(data)
+
+        assert result.semantic_valid
+        assert not any(
+            "packageVerificationCode" in msg.message for msg in result.messages
+        )
+
+    def test_validate_package_verification_code_prohibited_when_files_analyzed_false(
+        self,
+    ) -> None:
+        """Test that packageVerificationCode is prohibited when filesAnalyzed is false."""
+        data = {
+            "SPDXID": "SPDXRef-DOCUMENT",
+            "relationships": [
+                {
+                    "spdxElementId": "SPDXRef-DOCUMENT",
+                    "relationshipType": "DESCRIBES",
+                    "relatedSpdxElement": "SPDXRef-Package",
+                }
+            ],
+            "packages": [
+                {
+                    "SPDXID": "SPDXRef-Package",
+                    "name": "Test Package",
+                    "filesAnalyzed": False,
+                    "packageVerificationCode": {
+                        "packageVerificationCodeValue": "d6a770ba38583ed4bb4525bd96e50461655d2758"
+                    },
+                }
+            ],
+        }
+
+        validator = SemanticValidator()
+        result = validator.validate(data)
+
+        assert not result.semantic_valid
+        assert any(
+            "must not include packageVerificationCode" in msg.message
+            for msg in result.messages
+        )
+
+    def test_validate_package_verification_code_required_when_files_analyzed_null(
+        self,
+    ) -> None:
+        """Test that packageVerificationCode is required when filesAnalyzed is null (treated as true per spec)."""
+        data = {
+            "SPDXID": "SPDXRef-DOCUMENT",
+            "relationships": [
+                {
+                    "spdxElementId": "SPDXRef-DOCUMENT",
+                    "relationshipType": "DESCRIBES",
+                    "relatedSpdxElement": "SPDXRef-Package",
+                }
+            ],
+            "packages": [
+                {
+                    "SPDXID": "SPDXRef-Package",
+                    "name": "Test Package",
+                    "filesAnalyzed": None,
+                    # missing packageVerificationCode — null should behave like omitted (true)
+                }
+            ],
+        }
+
+        validator = SemanticValidator()
+        result = validator.validate(data)
+
+        assert not result.semantic_valid
+        assert any(
+            "missing required packageVerificationCode" in msg.message
+            for msg in result.messages
+        )
 
     def test_validate_semantic_processing_error(self) -> None:
         """Test handling of semantic processing errors."""

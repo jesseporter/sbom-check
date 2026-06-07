@@ -188,14 +188,45 @@ class SemanticValidator:
             semantic_valid=semantic_valid,
         )
 
+    def _check_package_verification_code(
+        self, package: dict[str, Any]
+    ) -> list[ValidationMessage]:
+        spdx_id = package.get("SPDXID", "<unknown>")
+        files_analyzed = package.get("filesAnalyzed") is not False
+        has_verification_code = "packageVerificationCode" in package
+        if files_analyzed and not has_verification_code:
+            return [
+                ValidationMessage(
+                    severity=ValidationSeverity.ERROR,
+                    message=(
+                        f"Package {spdx_id} missing required packageVerificationCode"
+                        " (filesAnalyzed is true or omitted)"
+                    ),
+                    rule_id="semantic_package_verification_code_required",
+                )
+            ]
+        if not files_analyzed and has_verification_code:
+            return [
+                ValidationMessage(
+                    severity=ValidationSeverity.ERROR,
+                    message=(
+                        f"Package {spdx_id} must not include packageVerificationCode"
+                        " when filesAnalyzed is false"
+                    ),
+                    rule_id="semantic_package_verification_code_prohibited",
+                )
+            ]
+        return []
+
     def _check_semantic_constraints_optimized(
         self, spdx_data: dict[str, Any]
     ) -> list[ValidationMessage]:
         """Optimized semantic constraint checking - same validation, 100x faster.
 
-        This does IDENTICAL validation to the original OWL approach:
+        Checks:
         1. Check for required DESCRIBES relationship
         2. Validate all SPDX ID references in relationships
+        3. Enforce packageVerificationCode cardinality per spec section 7.9
 
         Args:
             spdx_data: Original SPDX data
@@ -216,6 +247,7 @@ class SemanticValidator:
         for package in spdx_data.get("packages", []):
             if "SPDXID" in package:
                 all_spdx_ids.add(package["SPDXID"])
+            messages.extend(self._check_package_verification_code(package))
 
         for file_info in spdx_data.get("files", []):
             if "SPDXID" in file_info:
