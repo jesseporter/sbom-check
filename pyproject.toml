@@ -199,11 +199,32 @@ runner = "uv-venv-lock-runner"
 parallel_show_output = true
 
 # Python version test environments
-[tool.tox.env."py{310,311,312,313}"]
-description = "Run tests with Python {env_name}"
+[tool.tox.env.py310]
+description = "Run tests with Python 3.10"
 dependency_groups = ["dev"]
 commands = [
-    ["pytest", "tests/", "-v", "--cov=src", "--cov-report=html", "--cov-report=term"]
+    ["pytest", "tests/", "-v", "--cov=sbom_check", "--cov=spdx_validator", "--cov-report=html", "--cov-report=term"]
+]
+
+[tool.tox.env.py311]
+description = "Run tests with Python 3.11"
+dependency_groups = ["dev"]
+commands = [
+    ["pytest", "tests/", "-v", "--cov=sbom_check", "--cov=spdx_validator", "--cov-report=html", "--cov-report=term"]
+]
+
+[tool.tox.env.py312]
+description = "Run tests with Python 3.12"
+dependency_groups = ["dev"]
+commands = [
+    ["pytest", "tests/", "-v", "--cov=sbom_check", "--cov=spdx_validator", "--cov-report=html", "--cov-report=term"]
+]
+
+[tool.tox.env.py313]
+description = "Run tests with Python 3.13"
+dependency_groups = ["dev"]
+commands = [
+    ["pytest", "tests/", "-v", "--cov=sbom_check", "--cov=spdx_validator", "--cov-report=html", "--cov-report=term"]
 ]
 
 # Ruff formatting
@@ -267,7 +288,7 @@ commands = [
 description = "Run tests in parallel"
 dependency_groups = ["dev"]
 commands = [
-    ["pytest", "tests/", "-v", "--cov=src", "-n", "auto"]
+    ["pytest", "tests/", "-v", "--cov=sbom_check", "--cov=spdx_validator", "-n", "auto"]
 ]
 
 # Clean up generated files
