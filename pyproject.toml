@@ -171,11 +171,11 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src"]
+source = ["sbom_check", "spdx_validator"]
 omit = [
     "*/tests/*",
     "*/test_*",
-    "src/sbom_check/_version.py",
+    "*/sbom_check/_version.py",
 ]
 
 [tool.coverage.report]
